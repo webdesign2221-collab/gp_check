@@ -2,8 +2,10 @@ name: Update Gold Price
 
 on:
   schedule:
-    - cron: '0 4 * * *' # Runs every day at 4 AM UTC (10 AM BD time)
-  workflow_dispatch: # Allows you to click a button to run manually
+    # '0 */6 * * *' means: Run at minute 0 past every 6th hour (00:00, 06:00, 12:00, 18:00 UTC)
+    # In BD Time (UTC+6), this runs at: 6 AM, 12 PM, 6 PM, 12 AM.
+    - cron: '0 */6 * * *' 
+  workflow_dispatch: # Allows you to click the button to run manually
 
 permissions:
   contents: write
