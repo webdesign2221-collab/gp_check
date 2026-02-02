@@ -1,0 +1,32 @@
+name: Update Gold Price
+
+on:
+  schedule:
+    - cron: '0 4 * * *' # Runs every day at 4 AM UTC (10 AM BD time)
+  workflow_dispatch: # Allows you to click a button to run manually
+
+permissions:
+  contents: write
+
+jobs:
+  update-price:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Run Scraper
+        run: node scraper.js
+
+      - name: Commit and Push changes
+        run: |
+          git config --global user.name "GoldBot"
+          git config --global user.email "bot@example.com"
+          git add data.json
+          git commit -m "Auto-update gold price" || exit 0
+          git push
