@@ -3,261 +3,312 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gold Price Tracker (Fast)</title>
+    <title>Gold Price Analytics BD (AI)</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&display=swap" rel="stylesheet">
     
     <style>
+        :root {
+            --bg: #0b0f19;
+            --card: #151b2b;
+            --border: #2d3748;
+            --text-main: #edf2f7;
+            --text-sub: #a0aec0;
+            --gold: #fbbf24;
+            --green: #48bb78;
+            --red: #f56565;
+            --blue: #4299e1;
+        }
+
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #0f172a;
-            color: #f8fafc;
-            text-align: center;
-            padding: 20px;
+            background-color: var(--bg);
+            color: var(--text-main);
             margin: 0;
-        }
-
-        /* HEADER & PRICE CARD */
-        .card {
-            background: #1e293b;
             padding: 20px;
-            margin: 20px auto;
-            max-width: 320px;
-            border-radius: 16px;
-            border: 1px solid #334155;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
         }
-        h1 { margin: 0; color: #94a3b8; font-size: 1rem; text-transform: uppercase; letter-spacing: 1px;}
-        .price { font-size: 2.5rem; font-weight: 800; color: #fbbf24; margin: 5px 0; }
-        .badge { background: #334155; color: #cbd5e1; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; }
 
-        /* LOADING SPINNER */
-        .spinner {
-            border: 4px solid #334155;
-            border-top: 4px solid #fbbf24;
-            border-radius: 50%;
-            width: 30px;
-            height: 30px;
-            animation: spin 1s linear infinite;
-            margin: 20px auto;
-            display: none; /* Hidden by default */
-        }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .container { max-width: 1000px; margin: 0 auto; }
 
-        /* INPUTS & CONTROLS */
-        .controls-container {
-            background: #1e293b;
-            max-width: 800px;
-            margin: 0 auto 20px;
-            padding: 15px;
+        /* ADVISOR BANNER (NEW) */
+        .advisor-card {
+            background: linear-gradient(90deg, #1a202c 0%, #151b2b 100%);
+            border: 1px solid var(--border);
+            border-left: 5px solid var(--gold); /* Dynamic Color */
+            padding: 20px;
             border-radius: 12px;
-            border: 1px solid #334155;
+            margin-bottom: 25px;
             display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            justify-content: center;
             align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        
+        .advisor-text h2 { margin: 0; font-size: 1.5rem; text-transform: uppercase; letter-spacing: 1px; }
+        .advisor-text p { margin: 5px 0 0; color: var(--text-sub); font-size: 0.95rem; }
+        
+        .signal-badge {
+            background: rgba(255,255,255,0.1);
+            padding: 10px 20px;
+            border-radius: 8px;
+            text-align: right;
+        }
+        .signal-label { font-size: 0.75rem; color: var(--text-sub); text-transform: uppercase; }
+        .signal-value { font-size: 1.8rem; font-weight: 900; }
+
+        /* PRICE CARDS */
+        .header-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
         }
 
-        input[type="date"] {
-            background: #0f172a;
-            color: white;
-            border: 1px solid #475569;
-            padding: 8px;
-            border-radius: 6px;
-            font-family: inherit;
-            color-scheme: dark;
+        .price-card {
+            background: var(--card);
+            padding: 20px;
+            border-radius: 16px;
+            border: 1px solid var(--border);
         }
+        .price-card h3 { margin: 0; font-size: 0.85rem; color: var(--text-sub); text-transform: uppercase; }
+        .price-card .value { font-size: 1.6rem; font-weight: 800; margin: 10px 0 0 0; }
+        .price-card.main-card .value { color: var(--gold); }
 
+        /* CONTROLS */
+        .controls { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
+        
         button {
-            background: #334155;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: 0.1s;
+            background: var(--card); color: var(--text-sub); border: 1px solid var(--border);
+            padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: 600;
         }
-        button:hover { background: #475569; }
-        button.active { background: #fbbf24; color: #000; }
-        .btn-go { background: #fbbf24; color: #000; }
+        button:hover { background: #2d3748; color: white; }
+        button.active { background: var(--gold); color: #000; border-color: var(--gold); }
+        
+        input[type="date"] {
+            background: var(--card); color: white; border: 1px solid var(--border);
+            padding: 8px; border-radius: 8px; color-scheme: dark;
+        }
 
         /* CHART */
-        .chart-box {
-            max-width: 800px;
-            margin: 0 auto;
-            background: #1e293b;
-            padding: 15px;
-            border-radius: 12px;
-            border: 1px solid #334155;
-            height: 400px;
-            position: relative;
+        .chart-container {
+            background: var(--card); padding: 20px; border-radius: 16px; border: 1px solid var(--border); height: 450px;
         }
     </style>
 </head>
 <body>
 
-    <div class="card">
-        <h1>Official BAJUS Rate</h1>
-        <div id="loading-spinner" class="spinner"></div>
-        <div id="price-display" class="price">--</div>
-        <span class="badge">22K Gold / Bhori</span>
+<div class="container">
+    
+    <div class="advisor-card" id="advisor-box">
+        <div class="advisor-text">
+            <h2 id="signal-title" style="color: var(--gold);">ANALYZING...</h2>
+            <p id="signal-reason">Please wait, checking market data.</p>
+        </div>
+        <div class="signal-badge">
+            <div class="signal-label">Recommendation</div>
+            <div class="signal-value" id="signal-action">--</div>
+        </div>
     </div>
 
-    <div class="controls-container">
-        <button onclick="quickFilter(1)">1 Mo</button>
-        <button onclick="quickFilter(6)">6 Mo</button>
-        <button onclick="quickFilter(12)">1 Yr</button>
-        <button onclick="quickFilter(0)" id="btn-all">Max</button>
-        <div style="width: 15px;"></div>
+    <div class="header-grid">
+        <div class="price-card main-card">
+            <h3>22K Gold (Official)</h3>
+            <div class="value" id="p22">Loading...</div>
+        </div>
+        <div class="price-card">
+            <h3>21K (Est.)</h3>
+            <div class="value" id="p21">--</div>
+        </div>
+        <div class="price-card">
+            <h3>18K (Est.)</h3>
+            <div class="value" id="p18">--</div>
+        </div>
+        <div class="price-card">
+            <h3>Market Trend</h3>
+            <div class="value" id="trend-val">--</div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button onclick="quickFilter(1)">1M</button>
+        <button onclick="quickFilter(6)">6M</button>
+        <button onclick="quickFilter(12)">1Y</button>
+        <button onclick="quickFilter(0)" id="btn-all" class="active">Lifetime</button>
+        <div style="flex-grow:1"></div>
         <input type="date" id="start-date">
         <input type="date" id="end-date">
-        <button class="btn-go" onclick="customFilter()">Go</button>
+        <button style="background: var(--gold); color: black;" onclick="customFilter()">Go</button>
     </div>
 
-    <div class="chart-box">
-        <canvas id="myChart"></canvas>
+    <div class="chart-container">
+        <canvas id="goldChart"></canvas>
     </div>
+</div>
 
-    <script>
-        let allData = [];
-        let myChart = null;
+<script>
+    let allData = [];
+    let myChart = null;
 
-        // ===========================================
-        // 1. INSTANT LOAD STRATEGY (Stale-While-Revalidate)
-        // ===========================================
-        async function initApp() {
-            const spinner = document.getElementById('loading-spinner');
-            const priceDisplay = document.getElementById('price-display');
+    // --- 1. INITIALIZATION ---
+    async function init() {
+        // Cache logic for speed
+        const cached = localStorage.getItem('gold_v5');
+        if (cached) {
+            allData = JSON.parse(cached);
+            updateDashboard(allData);
+        }
 
-            // A. Check Local Cache first (Instant display)
-            const cachedData = localStorage.getItem('goldData_v1');
-            if (cachedData) {
-                allData = JSON.parse(cachedData);
-                renderApp(allData); // Show cached data immediately
-            } else {
-                spinner.style.display = 'block'; // Show spinner only if no cache
-                priceDisplay.style.display = 'none';
-            }
-
-            // B. Fetch Fresh Data in Background
-            try {
-                // 'no-cache' tells browser to check for server changes
-                const response = await fetch('./data.json', { cache: 'no-cache' });
-                const freshData = await response.json();
-                
-                // Save fresh data and update screen
-                localStorage.setItem('goldData_v1', JSON.stringify(freshData));
+        try {
+            const res = await fetch('./data.json?t=' + Date.now());
+            const freshData = await res.json();
+            if (JSON.stringify(freshData) !== cached) {
                 allData = freshData;
-                
-                spinner.style.display = 'none';
-                priceDisplay.style.display = 'block';
-                renderApp(allData); // Refresh with new data
-                
-            } catch (err) {
-                console.error("Fetch failed, using cache if available");
-                spinner.style.display = 'none';
-                priceDisplay.style.display = 'block';
+                localStorage.setItem('gold_v5', JSON.stringify(freshData));
+                updateDashboard(allData);
             }
+        } catch (e) { console.log("Using offline data"); }
+    }
+
+    // --- 2. UPDATE FUNCTION ---
+    function updateDashboard(dataSubset) {
+        if(!dataSubset || dataSubset.length === 0) return;
+
+        const latest = dataSubset[dataSubset.length - 1];
+        
+        // Prices
+        document.getElementById('p22').innerText = fmt(latest.price);
+        document.getElementById('p21').innerText = fmt(Math.round(latest.price * 0.953));
+        document.getElementById('p18').innerText = fmt(Math.round(latest.price * 0.817));
+
+        // Date Inputs
+        if (!document.getElementById('end-date').value) {
+            document.getElementById('end-date').value = latest.date;
+            document.getElementById('start-date').value = dataSubset[0].date;
         }
 
-        // ===========================================
-        // 2. RENDER LOGIC
-        // ===========================================
-        function renderApp(data) {
-            if (!data || data.length === 0) return;
+        // Run Analysis & Chart
+        runAnalysis(allData); // Use ALL data for accurate analysis
+        drawChart(dataSubset);
+    }
 
-            // Update Price Text
-            const latest = data[data.length - 1];
-            document.getElementById('price-display').innerText = "৳" + latest.price.toLocaleString();
-            
-            // Set Date Inputs defaults (only if empty)
-            if (!document.getElementById('end-date').value) {
-                document.getElementById('end-date').value = latest.date;
-                document.getElementById('start-date').value = data[0].date;
-            }
+    // --- 3. THE AI BRAIN (TECHNICAL ANALYSIS) ---
+    function runAnalysis(fullData) {
+        if (fullData.length < 15) return; // Need data to calculate
 
-            // Draw Chart (Default to Lifetime/Max)
-            // Only draw if not already filtered manually
-            if (!document.querySelector('button.active')) {
-                drawChart(data);
-                document.getElementById('btn-all').classList.add('active');
-            }
+        const prices = fullData.map(d => d.price);
+        const currentPrice = prices[prices.length - 1];
+        
+        // A. Calculate RSI (Relative Strength Index)
+        // This math measures if gold is "Overbought" (Too expensive) or "Oversold" (Cheap)
+        let gains = 0, losses = 0;
+        for (let i = prices.length - 15; i < prices.length - 1; i++) {
+            const diff = prices[i+1] - prices[i];
+            if (diff >= 0) gains += diff; else losses -= diff;
         }
+        const rs = gains / (losses || 1); // Avoid divide by zero
+        const rsi = 100 - (100 / (1 + rs));
 
-        function drawChart(dataSubset) {
-            const ctx = document.getElementById('myChart');
-            if (myChart) myChart.destroy();
+        // B. Calculate 30-Day Average (SMA)
+        const last30 = prices.slice(-30);
+        const avg30 = last30.reduce((a, b) => a + b, 0) / last30.length;
+        const diffFromAvg = ((currentPrice - avg30) / avg30) * 100;
 
-            myChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: dataSubset.map(d => d.date),
-                    datasets: [{
-                        label: 'Price (BDT)',
-                        data: dataSubset.map(d => d.price),
-                        borderColor: '#fbbf24',
-                        backgroundColor: 'rgba(251, 191, 36, 0.1)',
-                        fill: true,
-                        borderWidth: 2,
-                        pointRadius: 0, // No dots by default (faster)
-                        pointHoverRadius: 6,
-                        tension: 0.1 // Less curve math = faster
-                    }]
-                },
-                options: {
-                    animation: false, // <--- DISABLING ANIMATION MAKES IT FAST
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    interaction: { intersect: false, mode: 'index' },
-                    scales: {
-                        x: { grid: { display: false }, ticks: { color: '#64748b', maxTicksLimit: 6 } },
-                        y: { grid: { color: '#334155' }, ticks: { color: '#64748b' } }
-                    },
-                    plugins: { legend: { display: false } }
+        // C. GENERATE SIGNAL
+        const box = document.getElementById('advisor-box');
+        const title = document.getElementById('signal-title');
+        const reason = document.getElementById('signal-reason');
+        const action = document.getElementById('signal-action');
+        const trendVal = document.getElementById('trend-val');
+
+        trendVal.innerText = diffFromAvg > 0 ? "Bullish 📈" : "Bearish 📉";
+        trendVal.style.color = diffFromAvg > 0 ? "var(--green)" : "var(--red)";
+
+        // LOGIC TREE
+        if (rsi > 70) {
+            // Price is rising too fast -> High Risk
+            box.style.borderLeftColor = "var(--red)";
+            title.style.color = "var(--red)";
+            title.innerText = "MARKET PEAKING";
+            action.innerText = "WAIT / SELL";
+            action.style.color = "var(--red)";
+            reason.innerText = `RSI is high (${Math.round(rsi)}). Prices are historically high. Safe to wait for a dip or sell for profit.`;
+        } 
+        else if (rsi < 35 || currentPrice < avg30) {
+            // Price dropped recently -> Good Deal
+            box.style.borderLeftColor = "var(--green)";
+            title.style.color = "var(--green)";
+            title.innerText = "BUY OPPORTUNITY";
+            action.innerText = "BUY NOW";
+            action.style.color = "var(--green)";
+            reason.innerText = `Prices dipped below the 30-day average. Good time to accumulate before the next rally.`;
+        } 
+        else {
+            // Standard Market
+            box.style.borderLeftColor = "var(--gold)";
+            title.style.color = "var(--gold)";
+            title.innerText = "MARKET STABLE";
+            action.innerText = "HOLD";
+            action.style.color = "var(--gold)";
+            reason.innerText = `Market is steady. No major dips or spikes detected. Continue regular investment.`;
+        }
+    }
+
+    // --- 4. CHART ---
+    function drawChart(data) {
+        const ctx = document.getElementById('goldChart').getContext('2d');
+        if (myChart) myChart.destroy();
+
+        const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+        gradient.addColorStop(0, 'rgba(251, 191, 36, 0.2)');
+        gradient.addColorStop(1, 'rgba(251, 191, 36, 0.0)');
+
+        myChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: data.map(d => d.date),
+                datasets: [{
+                    label: 'Price (BDT)',
+                    data: data.map(d => d.price),
+                    borderColor: '#fbbf24',
+                    backgroundColor: gradient,
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 0,
+                    pointHoverRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { intersect: false, mode: 'index' },
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { display: false }, ticks: { color: '#718096', maxTicksLimit: 6 } },
+                    y: { grid: { color: '#2d3748' }, ticks: { color: '#718096' } }
                 }
-            });
-        }
-
-        // ===========================================
-        // 3. FILTER LOGIC
-        // ===========================================
-        function quickFilter(months) {
-            document.querySelectorAll('button').forEach(b => b.classList.remove('active'));
-            
-            if (months === 0) {
-                drawChart(allData);
-                document.getElementById('btn-all').classList.add('active');
-                return;
             }
-            
-            // Calculate Date
-            const cutoffDate = new Date();
-            cutoffDate.setMonth(cutoffDate.getMonth() - months);
-            
-            const filtered = allData.filter(d => new Date(d.date) >= cutoffDate);
-            drawChart(filtered);
-            
-            // Highlight the clicked button
-            event.target.classList.add('active');
-        }
+        });
+    }
 
-        function customFilter() {
-            document.querySelectorAll('button').forEach(b => b.classList.remove('active'));
-            const s = new Date(document.getElementById('start-date').value);
-            const e = new Date(document.getElementById('end-date').value);
-            
-            const filtered = allData.filter(d => {
-                const cur = new Date(d.date);
-                return cur >= s && cur <= e;
-            });
-            drawChart(filtered);
-        }
+    function quickFilter(months) {
+        document.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+        event.target.classList.add('active');
+        if (months === 0) return updateDashboard(allData);
+        const cutoff = new Date();
+        cutoff.setMonth(cutoff.getMonth() - months);
+        updateDashboard(allData.filter(d => new Date(d.date) >= cutoff));
+    }
 
-        // Start the app
-        initApp();
+    function customFilter() {
+        const s = new Date(document.getElementById('start-date').value);
+        const e = new Date(document.getElementById('end-date').value);
+        updateDashboard(allData.filter(d => { const c = new Date(d.date); return c >= s && c <= e; }));
+    }
 
-    </script>
+    function fmt(num) { return "৳" + num.toLocaleString(); }
+    init();
+</script>
 </body>
 </html>
