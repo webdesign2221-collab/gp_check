@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gold Price Tracker (Custom)</title>
+    <title>Gold Price Tracker (Fast)</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     
@@ -14,6 +14,7 @@
             color: #f8fafc;
             text-align: center;
             padding: 20px;
+            margin: 0;
         }
 
         /* HEADER & PRICE CARD */
@@ -21,14 +22,27 @@
             background: #1e293b;
             padding: 20px;
             margin: 20px auto;
-            max-width: 300px;
-            border-radius: 12px;
+            max-width: 320px;
+            border-radius: 16px;
             border: 1px solid #334155;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
         }
-        h1 { margin: 0; color: #fbbf24; }
-        .price { font-size: 2.5rem; font-weight: 800; color: #fbbf24; margin: 10px 0; }
-        small { color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; }
+        h1 { margin: 0; color: #94a3b8; font-size: 1rem; text-transform: uppercase; letter-spacing: 1px;}
+        .price { font-size: 2.5rem; font-weight: 800; color: #fbbf24; margin: 5px 0; }
+        .badge { background: #334155; color: #cbd5e1; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; }
+
+        /* LOADING SPINNER */
+        .spinner {
+            border: 4px solid #334155;
+            border-top: 4px solid #fbbf24;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+            display: none; /* Hidden by default */
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
         /* INPUTS & CONTROLS */
         .controls-container {
@@ -45,18 +59,16 @@
             align-items: center;
         }
 
-        /* Date Inputs */
         input[type="date"] {
             background: #0f172a;
             color: white;
-            border: 1px solid #334155;
-            padding: 8px 12px;
+            border: 1px solid #475569;
+            padding: 8px;
             border-radius: 6px;
             font-family: inherit;
-            color-scheme: dark; /* Makes calendar dark mode */
+            color-scheme: dark;
         }
 
-        /* Buttons */
         button {
             background: #334155;
             color: white;
@@ -65,14 +77,11 @@
             border-radius: 6px;
             cursor: pointer;
             font-weight: 600;
-            transition: 0.2s;
+            transition: 0.1s;
         }
         button:hover { background: #475569; }
         button.active { background: #fbbf24; color: #000; }
-        
-        /* The specific "Go" button */
         .btn-go { background: #fbbf24; color: #000; }
-        .btn-go:hover { background: #d97706; }
 
         /* CHART */
         .chart-box {
@@ -83,27 +92,28 @@
             border-radius: 12px;
             border: 1px solid #334155;
             height: 400px;
+            position: relative;
         }
     </style>
 </head>
 <body>
 
     <div class="card">
-        <h1>Gold Price BD</h1>
-        <div id="latest-price" class="price">Loading...</div>
-        <small>22K Price per Bhori</small>
+        <h1>Official BAJUS Rate</h1>
+        <div id="loading-spinner" class="spinner"></div>
+        <div id="price-display" class="price">--</div>
+        <span class="badge">22K Gold / Bhori</span>
     </div>
 
     <div class="controls-container">
-        <button onclick="quickFilter(1)">1 Month</button>
-        <button onclick="quickFilter(6)">6 Months</button>
-        <button onclick="quickFilter(12)">1 Year</button>
-        <button onclick="quickFilter(0)" id="btn-all">Lifetime</button>
-        
-        <div style="width: 20px;"></div> <input type="date" id="start-date">
-        <span>to</span>
+        <button onclick="quickFilter(1)">1 Mo</button>
+        <button onclick="quickFilter(6)">6 Mo</button>
+        <button onclick="quickFilter(12)">1 Yr</button>
+        <button onclick="quickFilter(0)" id="btn-all">Max</button>
+        <div style="width: 15px;"></div>
+        <input type="date" id="start-date">
         <input type="date" id="end-date">
-        <button class="btn-go" onclick="customFilter()">Filter</button>
+        <button class="btn-go" onclick="customFilter()">Go</button>
     </div>
 
     <div class="chart-box">
@@ -111,33 +121,73 @@
     </div>
 
     <script>
-        let allData = []; // Store the data globally
+        let allData = [];
         let myChart = null;
 
-        // 1. FETCH DATA ON LOAD
-        async function loadData() {
-            // Add timestamp to avoid caching
-            const response = await fetch('./data.json?t=' + new Date().getTime());
-            allData = await response.json();
+        // ===========================================
+        // 1. INSTANT LOAD STRATEGY (Stale-While-Revalidate)
+        // ===========================================
+        async function initApp() {
+            const spinner = document.getElementById('loading-spinner');
+            const priceDisplay = document.getElementById('price-display');
 
-            // Display Latest Price
-            const latest = allData[allData.length - 1];
-            document.getElementById('latest-price').innerText = "৳" + latest.price.toLocaleString();
+            // A. Check Local Cache first (Instant display)
+            const cachedData = localStorage.getItem('goldData_v1');
+            if (cachedData) {
+                allData = JSON.parse(cachedData);
+                renderApp(allData); // Show cached data immediately
+            } else {
+                spinner.style.display = 'block'; // Show spinner only if no cache
+                priceDisplay.style.display = 'none';
+            }
 
-            // Initialize Inputs with sensible defaults
-            document.getElementById('end-date').value = latest.date;
-            document.getElementById('start-date').value = allData[0].date;
-
-            // Draw Initial Chart (Lifetime)
-            drawChart(allData);
-            document.getElementById('btn-all').classList.add('active');
+            // B. Fetch Fresh Data in Background
+            try {
+                // 'no-cache' tells browser to check for server changes
+                const response = await fetch('./data.json', { cache: 'no-cache' });
+                const freshData = await response.json();
+                
+                // Save fresh data and update screen
+                localStorage.setItem('goldData_v1', JSON.stringify(freshData));
+                allData = freshData;
+                
+                spinner.style.display = 'none';
+                priceDisplay.style.display = 'block';
+                renderApp(allData); // Refresh with new data
+                
+            } catch (err) {
+                console.error("Fetch failed, using cache if available");
+                spinner.style.display = 'none';
+                priceDisplay.style.display = 'block';
+            }
         }
 
-        // 2. DRAW CHART FUNCTION
+        // ===========================================
+        // 2. RENDER LOGIC
+        // ===========================================
+        function renderApp(data) {
+            if (!data || data.length === 0) return;
+
+            // Update Price Text
+            const latest = data[data.length - 1];
+            document.getElementById('price-display').innerText = "৳" + latest.price.toLocaleString();
+            
+            // Set Date Inputs defaults (only if empty)
+            if (!document.getElementById('end-date').value) {
+                document.getElementById('end-date').value = latest.date;
+                document.getElementById('start-date').value = data[0].date;
+            }
+
+            // Draw Chart (Default to Lifetime/Max)
+            // Only draw if not already filtered manually
+            if (!document.querySelector('button.active')) {
+                drawChart(data);
+                document.getElementById('btn-all').classList.add('active');
+            }
+        }
+
         function drawChart(dataSubset) {
             const ctx = document.getElementById('myChart');
-
-            // Destroy old chart if it exists to avoid overlapping
             if (myChart) myChart.destroy();
 
             myChart = new Chart(ctx, {
@@ -145,103 +195,68 @@
                 data: {
                     labels: dataSubset.map(d => d.date),
                     datasets: [{
-                        label: 'Gold Price (22K)',
+                        label: 'Price (BDT)',
                         data: dataSubset.map(d => d.price),
                         borderColor: '#fbbf24',
-                        backgroundColor: 'rgba(251, 191, 36, 0.1)', // Transparent Gold
+                        backgroundColor: 'rgba(251, 191, 36, 0.1)',
                         fill: true,
-                        pointRadius: 3,
+                        borderWidth: 2,
+                        pointRadius: 0, // No dots by default (faster)
                         pointHoverRadius: 6,
-                        tension: 0.3 // Smooth curves
+                        tension: 0.1 // Less curve math = faster
                     }]
                 },
                 options: {
+                    animation: false, // <--- DISABLING ANIMATION MAKES IT FAST
                     responsive: true,
                     maintainAspectRatio: false,
-                    interaction: {
-                        intersect: false,
-                        mode: 'index',
-                    },
+                    interaction: { intersect: false, mode: 'index' },
                     scales: {
-                        x: {
-                            grid: { color: '#334155' },
-                            ticks: { color: '#94a3b8' }
-                        },
-                        y: {
-                            grid: { color: '#334155' },
-                            ticks: { color: '#94a3b8' }
-                        }
+                        x: { grid: { display: false }, ticks: { color: '#64748b', maxTicksLimit: 6 } },
+                        y: { grid: { color: '#334155' }, ticks: { color: '#64748b' } }
                     },
-                    plugins: {
-                        legend: { display: false }, // Hide legend to save space
-                        tooltip: {
-                            backgroundColor: '#0f172a',
-                            titleColor: '#fbbf24',
-                            bodyColor: '#fff',
-                            borderColor: '#334155',
-                            borderWidth: 1
-                        }
-                    }
+                    plugins: { legend: { display: false } }
                 }
             });
         }
 
-        // 3. QUICK FILTER BUTTONS (1M, 6M, 1Y)
+        // ===========================================
+        // 3. FILTER LOGIC
+        // ===========================================
         function quickFilter(months) {
-            // Reset active buttons
             document.querySelectorAll('button').forEach(b => b.classList.remove('active'));
             
             if (months === 0) {
-                // Lifetime
                 drawChart(allData);
                 document.getElementById('btn-all').classList.add('active');
-                // Update date pickers to match
-                document.getElementById('start-date').value = allData[0].date;
                 return;
             }
-
+            
             // Calculate Date
             const cutoffDate = new Date();
             cutoffDate.setMonth(cutoffDate.getMonth() - months);
             
-            // Filter
             const filtered = allData.filter(d => new Date(d.date) >= cutoffDate);
             drawChart(filtered);
             
-            // Update the date inputs to show what happened
-            document.getElementById('start-date').value = cutoffDate.toISOString().split('T')[0];
+            // Highlight the clicked button
+            event.target.classList.add('active');
         }
 
-        // 4. CUSTOM DATE FILTER (The feature you asked for)
         function customFilter() {
-            // Remove active state from quick buttons
             document.querySelectorAll('button').forEach(b => b.classList.remove('active'));
-
-            const startVal = document.getElementById('start-date').value;
-            const endVal = document.getElementById('end-date').value;
-
-            if (!startVal || !endVal) {
-                alert("Please select both start and end dates");
-                return;
-            }
-
-            const startDate = new Date(startVal);
-            const endDate = new Date(endVal);
-
+            const s = new Date(document.getElementById('start-date').value);
+            const e = new Date(document.getElementById('end-date').value);
+            
             const filtered = allData.filter(d => {
-                const current = new Date(d.date);
-                return current >= startDate && current <= endDate;
+                const cur = new Date(d.date);
+                return cur >= s && cur <= e;
             });
-
-            if (filtered.length === 0) {
-                alert("No data found for this range!");
-            } else {
-                drawChart(filtered);
-            }
+            drawChart(filtered);
         }
 
-        // Run on startup
-        loadData();
+        // Start the app
+        initApp();
 
     </script>
 </body>
