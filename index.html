@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auto Gold Price BD</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: sans-serif; background: #0f172a; color: white; text-align: center; padding: 20px; }
+        .card { background: #1e293b; padding: 20px; margin: 20px auto; max-width: 300px; border-radius: 10px; border: 1px solid #334155; }
+        h1 { color: #fbbf24; }
+        .price { font-size: 2em; font-weight: bold; }
+        .chart-box { max-width: 800px; margin: 0 auto; background: #1e293b; padding: 15px; border-radius: 10px; }
+    </style>
+</head>
+<body>
+
+    <h1>🏆 Gold Price Tracker (Auto)</h1>
+    
+    <div class="card">
+        <h3>Today's 22K Price</h3>
+        <div id="latest-price" class="price">Loading...</div>
+        <small>per Bhori</small>
+    </div>
+
+    <div class="chart-box">
+        <canvas id="myChart"></canvas>
+    </div>
+
+    <script>
+        // FETCH DATA AUTOMATICALLY
+        async function loadData() {
+            // Random number to prevent caching
+            const response = await fetch('./data.json?t=' + new Date().getTime());
+            const data = await response.json();
+
+            // 1. Update Current Price
+            const latest = data[data.length - 1];
+            document.getElementById('latest-price').innerText = "৳" + latest.price.toLocaleString();
+
+            // 2. Draw Chart
+            new Chart(document.getElementById('myChart'), {
+                type: 'line',
+                data: {
+                    labels: data.map(d => d.date),
+                    datasets: [{
+                        label: 'Gold Price (22K)',
+                        data: data.map(d => d.price),
+                        borderColor: '#fbbf24',
+                        backgroundColor: 'rgba(251, 191, 36, 0.2)',
+                        fill: true
+                    }]
+                },
+                options: { responsive: true }
+            });
+        }
+
+        loadData();
+    </script>
+</body>
+</html>
